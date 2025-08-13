@@ -1,0 +1,127 @@
+@baseUrl = http://localhost:5000/api/v1
+@token = YOUR_JWT_TOKEN_HERE
+
+### AUTH
+### Login (get JWT token)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "admin123"
+}
+
+### EMPLOYEES
+### Create Employee
+POST {{baseUrl}}/employees
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "department": "Engineering",
+  "status": "active"
+}
+
+### Get All Employees
+GET {{baseUrl}}/employees
+Authorization: Bearer {{token}}
+
+### Get Employee by ID
+GET {{baseUrl}}/employees/1
+Authorization: Bearer {{token}}
+
+### Update Employee
+PUT {{baseUrl}}/employees/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "John Updated",
+  "status": "inactive"
+}
+
+### Delete Employee
+DELETE {{baseUrl}}/employees/1
+Authorization: Bearer {{token}}
+
+
+### PROJECTS
+### Create Project
+POST {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Workhub Backend Revamp",
+  "description": "Backend API refactor project",
+  "status": "ongoing"
+}
+
+### Get All Projects
+GET {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+
+### Update Project
+PUT {{baseUrl}}/projects/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "completed"
+}
+
+### Delete Project
+DELETE {{baseUrl}}/projects/1
+Authorization: Bearer {{token}}
+
+
+### APPRAISALS
+### Create Appraisal
+POST {{baseUrl}}/appraisals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "employeeId": 1,
+  "rating": 4.5,
+  "feedback": "Great work!"
+}
+
+### Get All Appraisals
+GET {{baseUrl}}/appraisals
+Authorization: Bearer {{token}}
+
+
+### DOCUMENTS
+### Upload Document
+POST {{baseUrl}}/documents
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+file=@/path/to/document.pdf
+
+### Get All Documents
+GET {{baseUrl}}/documents
+Authorization: Bearer {{token}}
+
+
+### WARNINGS
+### Issue Warning
+POST {{baseUrl}}/warnings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "employeeId": 1,
+  "reason": "Repeated late arrivals"
+}
+
+### Get All Warnings
+GET {{baseUrl}}/warnings
+Authorization: Bearer {{token}}
+
+
+
+

@@ -1,0 +1,568 @@
+openapi: 3.0.3
+info:
+  title: Workhub Backend API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for the Workhub backend.
+    Security uses JWT Bearer tokens. Most routes require authentication and role-based authorization.
+servers:
+  - url: http://localhost:5000
+    description: Local dev server
+  - url: /api/v1
+    description: Base path note (paths below already include /api/v1)
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    UserIdParam:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string }
+    EmployeeIdParam:
+      name: employeeId
+      in: path
+      required: true
+      schema: { type: string }
+    DocumentIdParam:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          nullable: true
+        error:
+          nullable: true
+    Employee:
+      type: object
+      description: Simplified employee representation
+      properties:
+        _id: { type: string }
+        user: { type: string }
+        employeeId: { type: string }
+        department: { type: string }
+        designation: { type: string }
+        status: { type: string, enum: [active, on_leave, inactive, terminated] }
+    Project:
+      type: object
+      properties:
+        _id: { type: string }
+        name: { type: string }
+        manager: { type: string }
+    Appraisal:
+      type: object
+      properties:
+        _id: { type: string }
+        employee: { type: string }
+        status: { type: string }
+    Document:
+      type: object
+      properties:
+        _id: { type: string }
+        filename: { type: string }
+        owner: { type: string }
+    Warning:
+      type: object
+      properties:
+        _id: { type: string }
+        employee: { type: string }
+        status: { type: string, enum: [active, resolved, escalated, withdrawn] }
+security:
+  - bearerAuth: []
+paths:
+  # Auth
+  /api/v1/auth/:
+    get:
+      summary: Auth test route
+      tags: [Auth]
+      security: []
+      responses:
+        '200':
+          description: OK
+  # Employees
+  /api/v1/employees/:
+    get:
+      summary: List employees
+      tags: [Employees]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create employee
+      tags: [Employees]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user: { type: string }
+                employeeId: { type: string }
+                department: { type: string }
+                designation: { type: string }
+                joiningDate: { type: string, format: date }
+                dateOfBirth: { type: string, format: date }
+                gender: { type: string, enum: [male, female, other, prefer_not_to_say] }
+                phoneNumber: { type: string }
+      responses:
+        '201': { description: Created }
+  /api/v1/employees/stats:
+    get:
+      summary: Employee statistics
+      tags: [Employees]
+      responses:
+        '200': { description: OK }
+  /api/v1/employees/me:
+    get:
+      summary: Get current user's employee profile
+      tags: [Employees]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Employee' } } } }
+  /api/v1/employees/team:
+    get:
+      summary: Get team members for current manager
+      tags: [Employees]
+      responses:
+        '200': { description: OK }
+  /api/v1/employees/{id}:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Get employee by ID
+      tags: [Employees]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Employee' } } } }
+    put:
+      summary: Update employee
+      tags: [Employees]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Fields per updateEmployeeSchema
+      responses:
+        '200': { description: Updated }
+    delete:
+      summary: Delete employee
+      tags: [Employees]
+      responses:
+        '204': { description: Deleted }
+  /api/v1/employees/{id}/status:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Update employee status
+      tags: [Employees]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [active, on_leave, inactive, terminated] }
+                effectiveDate: { type: string, format: date }
+                reason: { type: string }
+      responses:
+        '200': { description: Updated }
+  /api/v1/employees/{id}/documents:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: List an employee's documents
+      tags: [Employees, Documents]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Upload an employee document
+      tags: [Employees, Documents]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                document: { type: string, format: binary }
+                documentType: { type: string }
+                description: { type: string }
+      responses:
+        '201': { description: Uploaded }
+  /api/v1/employees/documents/{documentId}/verify:
+    parameters: [ { $ref: '#/components/parameters/DocumentIdParam' } ]
+    put:
+      summary: Verify a document
+      tags: [Employees, Documents]
+      responses:
+        '200': { description: Verified }
+  /api/v1/employees/{id}/warnings:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Get warnings for an employee
+      tags: [Employees, Warnings]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Issue a warning to an employee
+      tags: [Employees, Warnings]
+      requestBody: employee)
+POST /api/v1/employees/:id/documents → 
+uploadDocument
+ (roles: admin, hr, manager, employee) + upload.single('document') + 
+validateRequest(documentUploadSchema)
+PUT /api/v1/employees/documents/:documentId/verify → verifyDocument (roles: admin, hr)
+GET /api/v1/employees/:id/warnings → 
+getEmployeeWarnings
+ (roles: admin, hr, manager)
+POST /api/v1/employees/:id/warnings → issueW
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type: { type: string }
+                severity: { type: string, enum: [low, medium, high, critical] }
+                description: { type: string }
+                dateIssued: { type: string, format: date }
+                validUntil: { type: string, format: date }
+      responses:
+        '201': { description: Created }
+  # Projects
+  /api/v1/projects/:
+    get:
+      summary: List projects
+      tags: [Projects]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create project
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+      responses:
+        '201': { description: Created }
+  /api/v1/projects/stats:
+    get:
+      summary: Project statistics
+      tags: [Projects]
+      responses:
+        '200': { description: OK }
+  /api/v1/projects/user/me:
+    get:
+      summary: Get current user's projects
+      tags: [Projects]
+      responses:
+        '200': { description: OK }
+  /api/v1/projects/{id}:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Get project by ID
+      tags: [Projects]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Project' } } } }
+    put:
+      summary: Update project
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Updated }
+    delete:
+      summary: Delete project
+      tags: [Projects]
+      responses:
+        '204': { description: Deleted }
+  /api/v1/projects/{id}/manager:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Assign manager
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                managerId: { type: string }
+      responses:
+        '200': { description: Updated }
+  /api/v1/projects/{id}/team:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Get project team
+      tags: [Projects]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Add team member
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId: { type: string }
+      responses:
+        '201': { description: Added }
+  /api/v1/projects/{id}/team/{userId}:
+    parameters: [ { $ref: '#/components/parameters/IdParam' }, { $ref: '#/components/parameters/UserIdParam' } ]
+    delete:
+      summary: Remove team member
+      tags: [Projects]
+      responses:
+        '204': { description: Removed }
+  # Appraisals
+  /api/v1/appraisals/:
+    get:
+      summary: List appraisals
+      tags: [Appraisals]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create appraisal
+      tags: [Appraisals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '201': { description: Created }
+  /api/v1/appraisals/stats:
+    get:
+      summary: Appraisal statistics
+      tags: [Appraisals]
+      responses:
+        '200': { description: OK }
+  /api/v1/appraisals/me:
+    get:
+      summary: Get my appraisals
+      tags: [Appraisals]
+      responses:
+        '200': { description: OK }
+  /api/v1/appraisals/{id}:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Get appraisal by ID
+      tags: [Appraisals]
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Update appraisal
+      tags: [Appraisals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Updated }
+    delete:
+      summary: Delete appraisal
+      tags: [Appraisals]
+      responses:
+        '204': { description: Deleted }
+  /api/v1/appraisals/{id}/self-assessment:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Submit self assessment
+      tags: [Appraisals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Submitted }
+  /api/v1/appraisals/{id}/review:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Submit review
+      tags: [Appraisals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Submitted }
+  /api/v1/appraisals/users/{userId}/appraisals:
+    parameters: [ { $ref: '#/components/parameters/UserIdParam' } ]
+    get:
+      summary: List a user's appraisals
+      tags: [Appraisals]
+      responses:
+        '200': { description: OK }
+  # Documents
+  /api/v1/documents/:
+    get:
+      summary: List documents
+      tags: [Documents]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Upload document
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201': { description: Uploaded }
+  /api/v1/documents/stats:
+    get:
+      summary: Document stats
+      tags: [Documents]
+      responses:
+        '200': { description: OK }
+  /api/v1/documents/download/{id}:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Download a document
+      tags: [Documents]
+      responses:
+        '200': { description: OK }
+  /api/v1/documents/{id}:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Get document by ID
+      tags: [Documents]
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Update document metadata
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Updated }
+    delete:
+      summary: Delete document
+      tags: [Documents]
+      responses:
+        '204': { description: Deleted }
+  /api/v1/documents/{id}/share:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Share document
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Shared }
+  # Warnings
+  /api/v1/warnings/:
+    get:
+      summary: List warnings
+      tags: [Warnings]
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create warning
+      tags: [Warnings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '201': { description: Created }
+  /api/v1/warnings/active:
+    get:
+      summary: List active warnings
+      tags: [Warnings]
+      responses:
+        '200': { description: OK }
+  /api/v1/warnings/employee/{employeeId}:
+    parameters: [ { $ref: '#/components/parameters/EmployeeIdParam' } ]
+    get:
+      summary: Get warnings for an employee
+      tags: [Warnings]
+      responses:
+        '200': { description: OK }
+  /api/v1/warnings/{id}:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    get:
+      summary: Get warning by ID
+      tags: [Warnings]
+      responses:
+        '200': { description: OK }
+    put:
+      summary: Update warning
+      tags: [Warnings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Updated }
+    delete:
+      summary: Delete warning
+      tags: [Warnings]
+      responses:
+        '204': { description: Deleted }
+  /api/v1/warnings/{id}/resolve:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Resolve a warning
+      tags: [Warnings]
+      requestBody:
+        required: false
+      responses:
+        '200': { description: Resolved }
+  /api/v1/warnings/{id}/escalate:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Escalate a warning
+      tags: [Warnings]
+      requestBody:
+        required: false
+      responses:
+        '200': { description: Escalated }
+  /api/v1/warnings/{id}/withdraw:
+    parameters: [ { $ref: '#/components/parameters/IdParam' } ]
+    put:
+      summary: Withdraw a warning
+      tags: [Warnings]
+      requestBody:
+        required: false
+      responses:
+        '200': { description: Withdrawn }

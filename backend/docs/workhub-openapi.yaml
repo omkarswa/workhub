@@ -1,0 +1,995 @@
+openapi: 3.0.3
+info:
+  title: Workhub Backend API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for the Workhub backend.
+    Security uses JWT Bearer tokens. Most routes require authentication and role-based authorization.
+servers:
+  - url: http://localhost:5000
+    description: Local dev server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    UserIdParam:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string }
+    EmployeeIdParam:
+      name: employeeId
+      in: path
+      required: true
+      schema: { type: string }
+    DocumentIdParam:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          nullable: true
+        error:
+          nullable: true
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Something went wrong
+            code:
+              type: string
+              example: VALIDATION_ERROR
+    Employee:
+      type: object
+      description: Simplified employee representation
+      properties:
+        _id: { type: string, example: "66b8d9f1f1a2b3c4d5e6f7a8" }
+        user: { type: string, example: "66b8d9f1f1a2b3c4d5e6f7b0" }
+        employeeId: { type: string, example: "EMP-00123" }
+        department: { type: string, example: "Engineering" }
+        designation: { type: string, example: "Software Engineer" }
+        status:
+          {
+            type: string,
+            enum: [active, on_leave, inactive, terminated],
+            example: active,
+          }
+        joiningDate: { type: string, format: date, example: "2024-06-10" }
+        dateOfBirth: { type: string, format: date, example: "1999-03-14" }
+        gender:
+          {
+            type: string,
+            enum: [male, female, other, prefer_not_to_say],
+            example: male,
+          }
+        phoneNumber: { type: string, example: "+91-9999999999" }
+    EmployeeCreateRequest:
+      type: object
+      required: [user, employeeId, department, designation, joiningDate]
+      properties:
+        user: { type: string }
+        employeeId: { type: string }
+        department: { type: string }
+        designation: { type: string }
+        joiningDate: { type: string, format: date }
+        dateOfBirth: { type: string, format: date }
+        gender: { type: string, enum: [male, female, other, prefer_not_to_say] }
+        phoneNumber: { type: string }
+    EmployeeUpdateRequest:
+      type: object
+      properties:
+        department: { type: string }
+        designation: { type: string }
+        phoneNumber: { type: string }
+        dateOfBirth: { type: string, format: date }
+        joiningDate: { type: string, format: date }
+        gender: { type: string, enum: [male, female, other, prefer_not_to_say] }
+    EmployeeStatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, on_leave, inactive, terminated] }
+        effectiveDate: { type: string, format: date }
+        reason: { type: string }
+    Project:
+      type: object
+      properties:
+        _id: { type: string, example: "66b8e001f1a2b3c4d5e6f7a8" }
+        name: { type: string, example: "Apollo" }
+        description: { type: string, example: "Internal developer portal" }
+        manager: { type: string, example: "66b8e001f1a2b3c4d5e6f7b1" }
+    ProjectCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+    ProjectUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+    ProjectAssignManagerRequest:
+      type: object
+      required: [managerId]
+      properties:
+        managerId: { type: string }
+    ProjectTeamAddRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: string }
+    Appraisal:
+      type: object
+      properties:
+        _id: { type: string }
+        employee: { type: string }
+        status: { type: string, example: "in_progress" }
+        periodStart: { type: string, format: date, example: "2024-01-01" }
+        periodEnd: { type: string, format: date, example: "2024-06-30" }
+        reviewer: { type: string, example: "66b8e111f1a2b3c4d5e6f7b9" }
+    AppraisalCreateRequest:
+      type: object
+      required: [employee, periodStart, periodEnd]
+      properties:
+        employee: { type: string }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+    AppraisalUpdateRequest:
+      type: object
+      properties:
+        status: { type: string }
+        reviewer: { type: string }
+    AppraisalSelfAssessmentRequest:
+      type: object
+      properties:
+        answers:
+          type: array
+          items:
+            type: object
+            properties:
+              questionId: { type: string }
+              answer: { type: string }
+    AppraisalReviewRequest:
+      type: object
+      properties:
+        ratings:
+          type: array
+          items:
+            type: object
+            properties:
+              competencyId: { type: string }
+              score: { type: number, minimum: 1, maximum: 5 }
+        comments: { type: string }
+    Document:
+      type: object
+      properties:
+        _id: { type: string }
+        filename: { type: string }
+        owner: { type: string }
+        contentType: { type: string, example: "application/pdf" }
+        size: { type: integer, example: 123456 }
+    DocumentUploadRequest:
+      type: object
+      properties:
+        file: { type: string, format: binary }
+    DocumentUpdateRequest:
+      type: object
+      properties:
+        filename: { type: string }
+        description: { type: string }
+    DocumentShareRequest:
+      type: object
+      properties:
+        sharedWith:
+          type: array
+          items: { type: string }
+        expiresAt: { type: string, format: date-time }
+    EmployeeDocumentUploadRequest:
+      type: object
+      properties:
+        document: { type: string, format: binary }
+        documentType: { type: string }
+        description: { type: string }
+    Warning:
+      type: object
+      properties:
+        _id: { type: string }
+        employee: { type: string }
+        type: { type: string, example: "policy_violation" }
+        severity: { type: string, enum: [low, medium, high, critical] }
+        description: { type: string }
+        status: { type: string, enum: [active, resolved, escalated, withdrawn] }
+        dateIssued: { type: string, format: date }
+        validUntil: { type: string, format: date }
+    WarningCreateRequest:
+      type: object
+      required: [type, severity, description, dateIssued]
+      properties:
+        type: { type: string }
+        severity: { type: string, enum: [low, medium, high, critical] }
+        description: { type: string }
+        dateIssued: { type: string, format: date }
+        validUntil: { type: string, format: date }
+    WarningUpdateRequest:
+      type: object
+      properties:
+        type: { type: string }
+        severity: { type: string, enum: [low, medium, high, critical] }
+        description: { type: string }
+        status: { type: string, enum: [active, resolved, escalated, withdrawn] }
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/:
+    get:
+      summary: Auth test route
+      tags: [Auth]
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ok" }
+  /api/v1/employees/:
+    get:
+      summary: List employees
+      tags: [Employees]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Employee" }
+    post:
+      summary: Create employee
+      tags: [Employees]
+      x-roles: [admin, hr]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeCreateRequest" }
+            examples:
+              default:
+                value:
+                  user: "66b8d9f1f1a2b3c4d5e6f7b0"
+                  employeeId: "EMP-00123"
+                  department: "Engineering"
+                  designation: "Software Engineer"
+                  joiningDate: "2024-06-10"
+                  dateOfBirth: "1999-03-14"
+                  gender: "male"
+                  phoneNumber: "+91-9999999999"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+  /api/v1/employees/stats:
+    get:
+      summary: Employee statistics
+      tags: [Employees]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer, example: 120 }
+                  active: { type: integer, example: 100 }
+                  on_leave: { type: integer, example: 5 }
+                  inactive: { type: integer, example: 10 }
+                  terminated: { type: integer, example: 5 }
+  /api/v1/employees/me:
+    get:
+      summary: Get current user's employee profile
+      tags: [Employees]
+      x-roles: [employee, manager, hr, admin]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+  /api/v1/employees/team:
+    get:
+      summary: Get team members for current manager
+      tags: [Employees]
+      x-roles: [manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Employee" }
+  /api/v1/employees/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Get employee by ID
+      tags: [Employees]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+    put:
+      summary: Update employee
+      tags: [Employees]
+      x-roles: [admin, hr]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeUpdateRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+    delete:
+      summary: Delete employee
+      tags: [Employees]
+      x-roles: [admin]
+      responses:
+        "204": { description: Deleted }
+  /api/v1/employees/{id}/status:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Update employee status
+      tags: [Employees]
+      x-roles: [admin, hr]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmployeeStatusUpdateRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Employee" }
+  /api/v1/employees/{id}/documents:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: List an employee's documents
+      tags: [Employees, Documents]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Document" }
+    post:
+      summary: Upload an employee document
+      tags: [Employees, Documents]
+      x-roles: [admin, hr, manager, employee]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              { $ref: "#/components/schemas/EmployeeDocumentUploadRequest" }
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+  /api/v1/employees/documents/{documentId}/verify:
+    parameters: [{ $ref: "#/components/parameters/DocumentIdParam" }]
+    put:
+      summary: Verify a document
+      tags: [Employees, Documents]
+      x-roles: [admin, hr]
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+  /api/v1/employees/{id}/warnings:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Get warnings for an employee
+      tags: [Employees, Warnings]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Warning" }
+    post:
+      summary: Issue a warning to an employee
+      tags: [Employees, Warnings]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WarningCreateRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warning" }
+  /api/v1/projects/:
+    get:
+      summary: List projects
+      tags: [Projects]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Project" }
+    post:
+      summary: Create project
+      tags: [Projects]
+      x-roles: [admin, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectCreateRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+  /api/v1/projects/stats:
+    get:
+      summary: Project statistics
+      tags: [Projects]
+      x-roles: [admin, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer, example: 12 }
+                  withManager: { type: integer, example: 10 }
+                  withoutManager: { type: integer, example: 2 }
+  /api/v1/projects/user/me:
+    get:
+      summary: Get current user's projects
+      tags: [Projects]
+      x-roles: [employee, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Project" }
+  /api/v1/projects/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Get project by ID
+      tags: [Projects]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+    put:
+      summary: Update project
+      tags: [Projects]
+      x-roles: [admin, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectUpdateRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+    delete:
+      summary: Delete project
+      tags: [Projects]
+      x-roles: [admin]
+      responses:
+        "204": { description: Deleted }
+  /api/v1/projects/{id}/manager:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Assign manager
+      tags: [Projects]
+      x-roles: [admin, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectAssignManagerRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+  /api/v1/projects/{id}/team:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Get project team
+      tags: [Projects]
+      x-roles: [admin, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    userId: { type: string }
+    post:
+      summary: Add team member
+      tags: [Projects]
+      x-roles: [admin, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectTeamAddRequest" }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId: { type: string }
+  /api/v1/projects/{id}/team/{userId}:
+    parameters:
+      [
+        { $ref: "#/components/parameters/IdParam" },
+        { $ref: "#/components/parameters/UserIdParam" },
+      ]
+    delete:
+      summary: Remove team member
+      tags: [Projects]
+      x-roles: [admin, manager]
+      responses:
+        "204": { description: Removed }
+  /api/v1/appraisals/:
+    get:
+      summary: List appraisals
+      tags: [Appraisals]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Appraisal" }
+    post:
+      summary: Create appraisal
+      tags: [Appraisals]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppraisalCreateRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appraisal" }
+  /api/v1/appraisals/stats:
+    get:
+      summary: Appraisal statistics
+      tags: [Appraisals]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer, example: 40 }
+                  in_progress: { type: integer, example: 18 }
+                  completed: { type: integer, example: 20 }
+                  overdue: { type: integer, example: 2 }
+  /api/v1/appraisals/me:
+    get:
+      summary: Get my appraisals
+      tags: [Appraisals]
+      x-roles: [employee, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Appraisal" }
+  /api/v1/appraisals/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Get appraisal by ID
+      tags: [Appraisals]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appraisal" }
+    put:
+      summary: Update appraisal
+      tags: [Appraisals]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppraisalUpdateRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appraisal" }
+    delete:
+      summary: Delete appraisal
+      tags: [Appraisals]
+      x-roles: [admin, hr]
+      responses:
+        "204": { description: Deleted }
+  /api/v1/appraisals/{id}/self-assessment:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Submit self assessment
+      tags: [Appraisals]
+      x-roles: [employee]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/AppraisalSelfAssessmentRequest" }
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appraisal" }
+  /api/v1/appraisals/{id}/review:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Submit review
+      tags: [Appraisals]
+      x-roles: [manager, hr, admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppraisalReviewRequest" }
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Appraisal" }
+  /api/v1/appraisals/users/{userId}/appraisals:
+    parameters: [{ $ref: "#/components/parameters/UserIdParam" }]
+    get:
+      summary: List a user's appraisals
+      tags: [Appraisals]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Appraisal" }
+  /api/v1/documents/:
+    get:
+      summary: List documents
+      tags: [Documents]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Document" }
+    post:
+      summary: Upload document
+      tags: [Documents]
+      x-roles: [admin, hr, manager, employee]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/DocumentUploadRequest" }
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+  /api/v1/documents/stats:
+    get:
+      summary: Document stats
+      tags: [Documents]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer, example: 250 }
+                  byType:
+                    type: object
+                    additionalProperties:
+                      type: integer
+  /api/v1/documents/download/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Download a document
+      tags: [Documents]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: File stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+  /api/v1/documents/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Get document by ID
+      tags: [Documents]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+    put:
+      summary: Update document metadata
+      tags: [Documents]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DocumentUpdateRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+    delete:
+      summary: Delete document
+      tags: [Documents]
+      x-roles: [admin, hr]
+      responses:
+        "204": { description: Deleted }
+  /api/v1/documents/{id}/share:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Share document
+      tags: [Documents]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DocumentShareRequest" }
+      responses:
+        "200":
+          description: Shared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+  /api/v1/warnings/:
+    get:
+      summary: List warnings
+      tags: [Warnings]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Warning" }
+    post:
+      summary: Create warning
+      tags: [Warnings]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WarningCreateRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warning" }
+  /api/v1/warnings/active:
+    get:
+      summary: List active warnings
+      tags: [Warnings]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Warning" }
+  /api/v1/warnings/employee/{employeeId}:
+    parameters: [{ $ref: "#/components/parameters/EmployeeIdParam" }]
+    get:
+      summary: Get warnings for an employee
+      tags: [Warnings]
+      x-roles: [admin, hr, manager]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Warning" }
+  /api/v1/warnings/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    get:
+      summary: Get warning by ID
+      tags: [Warnings]
+      x-roles: [admin, hr, manager, employee]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warning" }
+    put:
+      summary: Update warning
+      tags: [Warnings]
+      x-roles: [admin, hr]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WarningUpdateRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warning" }
+    delete:
+      summary: Delete warning
+      tags: [Warnings]
+      x-roles: [admin, hr]
+      responses:
+        "204": { description: Deleted }
+  /api/v1/warnings/{id}/resolve:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Resolve a warning
+      tags: [Warnings]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: false
+      responses:
+        "200":
+          description: Resolved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warning" }
+  /api/v1/warnings/{id}/escalate:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Escalate a warning
+      tags: [Warnings]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: false
+      responses:
+        "200":
+          description: Escalated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warning" }
+  /api/v1/warnings/{id}/withdraw:
+    parameters: [{ $ref: "#/components/parameters/IdParam" }]
+    put:
+      summary: Withdraw a warning
+      tags: [Warnings]
+      x-roles: [admin, hr, manager]
+      requestBody:
+        required: false
+      responses:
+        "200":
+          description: Withdrawn
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Warning" }
